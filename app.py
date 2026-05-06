@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -121,22 +122,29 @@ if st.session_state.historico_datos:
     # Obtención segura de credenciales desde Streamlit Secrets
     try:
         EMAIL_EMISOR = st.secrets["correo_alumno"]          # Tu cuenta de correo
-        EMAIL_PASS = st.secrets["contrasena_aplicacion"]    # Tu contraseña de aplicación generada por Google/Outlook
-        EMAIL_RECEPTOR = st.secrets["correo_profesora"]     # Correo de destino de la profesora
+        EMAIL_PASS = st.secrets["contrasena_aplicacion"]    # Tu contraseña de aplicación generada
+        EMAIL_RECEPTOR_1 = st.secrets["correo_profesora"]   # fmo@fundacionmasaveu.com (Profesora 1)
     except KeyError:
         EMAIL_EMISOR = None
         EMAIL_PASS = None
-        EMAIL_RECEPTOR = None
+        EMAIL_RECEPTOR_1 = None
         st.info("💡 Para habilitar el envío automático por correo electrónico, configura las variables en la sección de 'Secrets' de tu app en Streamlit Cloud.")
 
-    if EMAIL_EMISOR and EMAIL_PASS and EMAIL_RECEPTOR:
+    # Definimos el correo de Ana de manera directa
+    EMAIL_RECEPTOR_2 = "ana@fundacionmasaveu.com"
+
+    if EMAIL_EMISOR and EMAIL_PASS and EMAIL_RECEPTOR_1:
         if st.button("📨 Enviar Excel por Correo"):
             try:
                 # Creación del mensaje de correo electrónico
                 msg = MIMEMultipart()
                 msg['From'] = EMAIL_EMISOR
-                msg['To'] = EMAIL_RECEPTOR
-                msg['Cc'] = EMAIL_EMISOR  # Copia para el alumno
+                
+                # Definimos la lista de destinatarios principales (las dos profesoras)
+                destinatarios_principales = [EMAIL_RECEPTOR_1, EMAIL_RECEPTOR_2]
+                msg['To'] = ", ".join(destinatarios_principales)
+                msg['Cc'] = EMAIL_EMISOR  # Copia para ti como alumno
+                
                 msg['Subject'] = f"Reporte de Seguimiento de Obra - {datetime.now().strftime('%d/%m/%Y')}"
                 
                 cuerpo = f"Hola,\n\nSe adjunta el reporte de seguimiento de obra en formato Excel generado por el alumno.\n\nAtentamente,\nApp de Seguimiento"
@@ -154,12 +162,13 @@ if st.session_state.historico_datos:
                 server.starttls()
                 server.login(EMAIL_EMISOR, EMAIL_PASS)
                 
-                # Enviamos el correo a la profesora y una copia al propio alumno
-                destinatarios = [EMAIL_RECEPTOR, EMAIL_EMISOR]
-                server.sendmail(EMAIL_EMISOR, destinatarios, msg.as_string())
+                # Lista total de personas a las que el servidor SMTP les enviará el mail (profesoras + alumno)
+                todos_los_destinatarios = destinatarios_principales + [EMAIL_EMISOR]
+                
+                server.sendmail(EMAIL_EMISOR, todos_los_destinatarios, msg.as_string())
                 server.quit()
                 
-                st.success("📧 ¡Correo electrónico enviado con éxito a la profesora y con copia a tu correo!")
+                st.success("📧 ¡Correo electrónico enviado con éxito a las profesoras y con copia a tu correo!")
             except Exception as e:
                 st.error(f"❌ Error al enviar el correo: {e}")
     else:
